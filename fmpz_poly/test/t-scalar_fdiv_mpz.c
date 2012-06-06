@@ -19,7 +19,7 @@
 =============================================================================*/
 /******************************************************************************
 
-    Copyright (C) 2011 Sebastian Pancratz
+    Copyright (C) 2009 William Hart
 
 ******************************************************************************/
 
@@ -27,67 +27,74 @@
 #include <stdlib.h>
 #include <mpir.h>
 #include "flint.h"
+#include "fmpz.h"
+#include "fmpz_poly.h"
 #include "ulong_extras.h"
 
-int main(void)
+int
+main(void)
 {
     int i, result;
     flint_rand_t state;
 
-    printf("sqrtmod....");
+    printf("scalar_fdiv_mpz....");
     fflush(stdout);
 
     flint_randinit(state);
 
-    for (i = 0; i < 1000; i++) /* Test random integers */
+    /* Compare with fmpz_poly_scalar_fdiv_fmpz */
+    for (i = 0; i < 1000; i++)
     {
-        mp_limb_t a, b, p, pinv;
+        fmpz_poly_t a, b, c;
+        fmpz_t n;
+        mpz_t n1;
 
-        p = n_randtest_prime(state, 0);
-        a = n_randint(state, p);
+        fmpz_init(n);
+        mpz_init(n1);
+        do {
+            fmpz_randtest(n, state, 200);
+        } while (fmpz_is_zero(n));
+        fmpz_get_mpz(n1, n);
 
-        b = n_sqrtmod(a, p);
-        pinv = n_preinvert_limb(p);
+        fmpz_poly_init(a);
+        fmpz_poly_init(b);
+        fmpz_poly_init(c);
+        fmpz_poly_randtest(a, state, n_randint(state, 100), 200);
+        fmpz_poly_scalar_mul_fmpz(a, a, n);
 
-        result = (b == 0 || n_mulmod2_preinv(b, b, p, pinv) == a);
+        fmpz_poly_scalar_fdiv_fmpz(b, a, n);
+        fmpz_poly_scalar_fdiv_mpz(c, a, n1);
+
+        result = (fmpz_poly_equal(b, c));
         if (!result)
         {
             printf("FAIL:\n");
-            printf("p = %lu\n", p);
-            printf("a = %lu\n", a);
-            printf("b = %lu\n", b);
+            fmpz_poly_print(a), printf("\n\n");
+            fmpz_poly_print(b), printf("\n\n");
+            fmpz_poly_print(c), printf("\n\n");
             abort();
         }
-    }
 
-    for (i = 0; i < 1000; i++) /* Test random squares */
-    {
-        mp_limb_t a, b, p, pinv;
-
-        p = n_randtest_prime(state, 0);
-
-        do 
-            b = n_randint(state, p);
-        while (b == 0);
-
-        pinv = n_preinvert_limb(p);
-        a = n_mulmod2_preinv(b, b, p, pinv);
-
-        b = n_sqrtmod(a, p);
-
-        result = (n_mulmod2_preinv(b, b, p, pinv) == a);
+        /* aliasing */
+        fmpz_poly_scalar_fdiv_mpz(a, a, n1);
+        result = (fmpz_poly_equal(a, c));
         if (!result)
         {
             printf("FAIL:\n");
-            printf("p = %lu\n", p);
-            printf("a = %lu\n", a);
-            printf("b = %lu\n", b);
+            fmpz_poly_print(a), printf("\n\n");
+            fmpz_poly_print(c), printf("\n\n");
             abort();
         }
+
+        mpz_clear(n1);
+        fmpz_clear(n);
+        fmpz_poly_clear(a);
+        fmpz_poly_clear(b);
+        fmpz_poly_clear(c);
     }
 
     flint_randclear(state);
-
+    _fmpz_cleanup();
     printf("PASS\n");
     return 0;
 }
