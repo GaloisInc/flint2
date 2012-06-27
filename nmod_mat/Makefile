@@ -18,11 +18,13 @@ PROFS = $(patsubst %.c, %, $(PROF_SOURCES))
 
 TUNE = $(patsubst %.c, %, $(TUNE_SOURCES))
 
-all: $(OBJS) 
+.SECONDARY:
+
+all: $(OBJS)
 
 library: $(LIB_OBJS)
 
-profile:
+profile: $(PROF_SOURCES)
 	$(foreach prog, $(PROFS), $(CC) -O2 -std=c99 $(INCS) $(prog).c ../profiler.o -o $(BUILD_DIR)/$(prog) $(LIBS) || exit $$?;)
         
 tune: $(TUNE_SOURCES)
@@ -37,7 +39,7 @@ $(BUILD_DIR)/%.lo: %.c
 clean:
 	rm -rf $(BUILD_DIR)	
 
-check: $(TESTS_RUN)
+check: $(TESTS) $(TESTS_RUN)
 
 %_RUN: %
 	@$<
